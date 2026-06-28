@@ -326,12 +326,54 @@ Profile const* const ProfileSubway = ROUTX_OSM_PROFILE_SUBWAY;
 /**
  * Thrown when the routx library has failed to load OSM data. See logs for details.
  */
-class LoadingFailed : std::runtime_error {
+class LoadingFailed : public std::runtime_error {
    public:
     LoadingFailed() : std::runtime_error("failed to load OSM data") {}
 };
 
 }  // namespace osm
+
+/**
+ * SerializedGraph represents an _owned_ buffer for some wire serialization of a @ref Graph.
+ *
+ * This class inherits from a
+ * [std::span<char>](https://en.cppreference.com/w/cpp/container/span.html) and therefore all of
+ * span methods are available. However, this class has an extra field (required for the underlying
+ * destructor) and is not copyable.
+ */
+class SerializedGraph : public std::span<char> {
+   public:
+    SerializedGraph(char* data, uint32_t len, uint32_t cap)
+        : std::span<char>(data, len), m_capacity(cap) {};
+
+    SerializedGraph(SerializedGraph const&) = delete;
+    SerializedGraph& operator=(SerializedGraph const&) = delete;
+
+    ~SerializedGraph() {
+        RoutxSerializedGraph raw = {
+            .content = data(),
+            .len = static_cast<uint32_t>(size()),
+            .capacity = m_capacity,
+        };
+        routx_serialized_graph_delete(raw);
+    }
+
+   private:
+    uint32_t m_capacity;
+};
+
+/**
+ * Thrown when the routx library has filed to read or write a Graph. See logs for details.
+ */
+class SerializationFailed : public std::runtime_error {
+   public:
+    SerializationFailed() : std::runtime_error("graph serialization failed") {}
+};
+
+/**
+ * Wire format of a full/serialized Graph.
+ */
+using GraphFormat = RoutxGraphFormat;
 
 /**
  * Route represents an _owned_ sequence of nodes, that when traversed, get you from A to B.
@@ -688,6 +730,53 @@ class Graph {
     std::span<int64_t> simplify_route(std::span<int64_t> route, float epsilon) const {
         auto new_len = routx_graph_simplify_route(m_impl, route.data(), route.size(), epsilon);
         return std::span(route.data(), new_len);
+    }
+
+    /**
+     * Reads data from a serialized graph file, and adds it to the graph.
+     *
+     * @throws @ref SerializationFailed if reading has failed, see logs in such case
+     */
+    void read_from_file(GraphFormat format, char const* filename) {
+        if (!routx_graph_read_from_file(m_impl, format, filename)) [[unlikely]] {
+            throw SerializationFailed();
+        }
+    }
+
+    /**
+     * Reads data from a serialized graph buffer, and adds it to the graph.
+     *
+     * @throws @ref SerializationFailed if reading has failed, see logs in such case
+     */
+    void read_from_memory(GraphFormat format, char const* data, size_t len) {
+        if (!routx_graph_read_from_memory(m_impl, format, data, len)) [[unlikely]] {
+            throw SerializationFailed();
+        }
+    }
+
+    /**
+     * Writes graph data to a file, as per the selected @ref GraphFormat.
+     *
+     * @throws @ref SerializationFailed if writing has failed, see logs in such case
+     */
+    void write_to_file(GraphFormat format, char const* filename) {
+        if (!routx_graph_write_to_file(m_impl, format, filename)) [[unlikely]] {
+            throw SerializationFailed();
+        }
+    }
+
+    /**
+     * Writes graph data to an in-memory buffer, as per the selected @ref GraphFormat.
+     *
+     * @returns an owned handle to the allocated memory
+     * @throws @ref SerializationFailed if writing has failed, see logs in such case
+     */
+    SerializedGraph write_to_memory(GraphFormat format) {
+        auto raw = routx_graph_write_to_memory(m_impl, format);
+        if (!raw.content) [[unlikely]] {
+            throw SerializationFailed();
+        }
+        return SerializedGraph(raw.content, raw.len, raw.capacity);
     }
 
     /**

@@ -580,6 +580,66 @@ bool routx_graph_add_from_osm_memory(RoutxGraph* graph, RoutxOsmOptions const* o
                                      char const* content, size_t content_len);
 
 /**
+ * Wire format of a full/serialized Graph.
+ */
+typedef enum RoutxGraphFormat {
+    /// Custom, routx binary file format.
+    RoutxGraphFormatBinary = 1,
+} RoutxGraphFormat;
+
+/**
+ * Graph serialized to some wire @ref RoutxGraphFormat.
+ */
+typedef struct RoutxSerializedGraph {
+    /// Data of the serialized Graph. NULL if serialization failed.
+    char* content;
+
+    /// Length of the `content` array.
+    uint32_t len;
+
+    /// Capacity of the `content` array; used for internal bookkeeping.
+    uint32_t capacity;
+} RoutxSerializedGraph;
+
+/**
+ * Reads data from a serialized graph file, and adds it to the provided graph.
+ *
+ * @returns false if an error occurred, true otherwise.
+ */
+bool routx_graph_read_from_file(RoutxGraph* graph, RoutxGraphFormat format, char const* filename);
+
+/**
+ * Reads data from a serialized graph buffer, and adds it to the provided graph.
+ *
+ * @returns false if an error occurred, true otherwise.
+ */
+bool routx_graph_read_from_memory(RoutxGraph* graph, RoutxGraphFormat format, char const* content,
+                                  size_t content_len);
+
+/**
+ * Writes graph data to a file, as per the selected @ref RoutxGraphFormat.
+ *
+ * @returns false if an error occurred, true otherwise.
+ */
+bool routx_graph_write_to_file(RoutxGraph const* graph, RoutxGraphFormat format,
+                               char const* filename);
+
+/**
+ * Writes graph data to an in-memory buffer, as per the selected @ref RoutxGraphFormat.
+ *
+ * @returns a RoutxSerializedGraph, which must always be freed by calling
+ *   @ref routx_serialized_graph_delete, unless the returned pointer indicates an error
+ *   (with `content == NULL`).
+ */
+RoutxSerializedGraph routx_graph_write_to_memory(RoutxGraph const* graph, RoutxGraphFormat format);
+
+/**
+ * Deallocates data owned by a @ref RoutxSerializedGraph.
+ * The `content` pointer may be NULL, in which case this call is a no-op.
+ */
+void routx_serialized_graph_delete(RoutxSerializedGraph);
+
+/**
  * High-level route search status, also used as the tag for the anonymous union in
  * @ref RoutxRouteResult.
  */

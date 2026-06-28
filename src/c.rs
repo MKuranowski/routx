@@ -6,6 +6,8 @@
 //! There should be no need to call this from Rust, but the module needs to be included as
 //! rust doesn't have a crate-type-based conditional compilation.
 
+use crate::serialize::BinarySerializer;
+
 use super::*;
 
 use std::borrow::Cow;
@@ -278,6 +280,162 @@ pub unsafe extern "C" fn routx_graph_simplify_route(
             new_route.len()
         }
         _ => route_len,
+    }
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum CGraphFormat {
+    Binary = 1,
+}
+
+#[repr(C)]
+pub struct CSerializedGraph {
+    content: *mut u8,
+    len: u32,
+    capacity: u32,
+}
+
+impl CSerializedGraph {
+    const fn null() -> Self {
+        Self {
+            content: null_mut(),
+            len: 0,
+            capacity: 0,
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn routx_graph_read_from_file(
+    graph: *mut Graph,
+    format: CGraphFormat,
+    c_filename: *const c_char,
+) -> bool {
+    if let Some(graph) = graph.as_mut() {
+        let c_filename = CStr::from_ptr(c_filename);
+        let filename = str::from_utf8_unchecked(c_filename.to_bytes());
+
+        let f = match std::fs::File::open(filename) {
+            Ok(f) => f,
+            Err(e) => {
+                log::error!("open {}: {}", filename, e);
+                return false;
+            }
+        };
+        let b = std::io::BufReader::new(f);
+
+        let result = match format {
+            CGraphFormat::Binary => graph.read_bin(b),
+        };
+
+        if let Err(e) = result {
+            log::error!("read {}: {}", filename, e);
+            return false;
+        }
+    }
+
+    true
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn routx_graph_read_from_memory(
+    graph: *mut Graph,
+    format: CGraphFormat,
+    content: *const u8,
+    content_len: usize,
+) -> bool {
+    if let Some(graph) = graph.as_mut() {
+        let r = std::slice::from_raw_parts(content, content_len);
+        let result = match format {
+            CGraphFormat::Binary => graph.read_bin(r),
+        };
+
+        if let Err(e) = result {
+            log::error!("{}", e);
+            return false;
+        }
+    }
+
+    true
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn routx_graph_write_to_file(
+    graph: *const Graph,
+    format: CGraphFormat,
+    c_filename: *const c_char,
+) -> bool {
+    if let Some(graph) = graph.as_ref() {
+        let c_filename = CStr::from_ptr(c_filename);
+        let filename = str::from_utf8_unchecked(c_filename.to_bytes());
+
+        let f = match std::fs::File::create(filename) {
+            Ok(f) => f,
+            Err(e) => {
+                log::error!("create {}: {}", filename, e);
+                return false;
+            }
+        };
+        let b = std::io::BufWriter::new(f);
+
+        let result = match format {
+            CGraphFormat::Binary => graph.write_bin(b),
+        };
+
+        if let Err(e) = result {
+            log::error!("write {}: {}", filename, e);
+            return false;
+        }
+    }
+
+    true
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn routx_graph_write_to_memory(
+    graph: *const Graph,
+    format: CGraphFormat,
+) -> CSerializedGraph {
+    if let Some(graph) = graph.as_ref() {
+        let mut data = Vec::new();
+        let result = match format {
+            CGraphFormat::Binary => graph.write_bin(&mut data),
+        };
+
+        if let Err(e) = result {
+            log::error!("write: {}", e);
+            return CSerializedGraph::null();
+        }
+
+        data.shrink_to_fit();
+        let ptr = data.as_mut_ptr();
+        let len = data.len().try_into().expect("buffer length overflow");
+        let capacity = data
+            .capacity()
+            .try_into()
+            .expect("buffer capacity overflow");
+        forget(data);
+
+        CSerializedGraph {
+            content: ptr,
+            len,
+            capacity,
+        }
+    } else {
+        log::error!("routx_graph_write_to_memory: graph must not be null");
+        CSerializedGraph::null()
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn routx_serialized_graph_delete(data: CSerializedGraph) {
+    if !data.content.is_null() {
+        drop(Vec::from_raw_parts(
+            data.content,
+            data.len as usize,
+            data.capacity as usize,
+        ));
     }
 }
 

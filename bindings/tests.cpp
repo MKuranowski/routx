@@ -43,6 +43,30 @@ static std::string_view osm_file_fixture =
     "</relation>\n"
     "</osm>\n";
 
+routx::Graph get_simple_fixture() {
+    //   200   200   200
+    // 1─────2─────3─────4
+    //       └─────5─────┘
+    //         100    100
+    routx::Graph g = {};
+    g.set_node(routx::Node{.id = 1, .osm_id = 1, .lat = 0.01, .lon = 0.01});
+    g.set_node(routx::Node{.id = 2, .osm_id = 2, .lat = 0.02, .lon = 0.01});
+    g.set_node(routx::Node{.id = 3, .osm_id = 3, .lat = 0.03, .lon = 0.01});
+    g.set_node(routx::Node{.id = 4, .osm_id = 4, .lat = 0.04, .lon = 0.01});
+    g.set_node(routx::Node{.id = 5, .osm_id = 5, .lat = 0.03, .lon = 0.00});
+    g.set_edge(1, routx::Edge{.to = 2, .cost = 200.0});
+    g.set_edge(2, routx::Edge{.to = 1, .cost = 200.0});
+    g.set_edge(2, routx::Edge{.to = 3, .cost = 200.0});
+    g.set_edge(2, routx::Edge{.to = 5, .cost = 100.0});
+    g.set_edge(3, routx::Edge{.to = 2, .cost = 200.0});
+    g.set_edge(3, routx::Edge{.to = 4, .cost = 200.0});
+    g.set_edge(4, routx::Edge{.to = 3, .cost = 200.0});
+    g.set_edge(4, routx::Edge{.to = 5, .cost = 100.0});
+    g.set_edge(5, routx::Edge{.to = 2, .cost = 100.0});
+    g.set_edge(5, routx::Edge{.to = 4, .cost = 100.0});
+    return g;
+}
+
 TEST(Graph, ManipulateNodes) {
     routx::Graph g = {};
 
@@ -207,27 +231,7 @@ TEST(Graph, ManipulateEdges) {
 }
 
 TEST(Graph, FindRoute) {
-    //   200   200   200
-    // 1─────2─────3─────4
-    //       └─────5─────┘
-    //         100    100
-    routx::Graph g = {};
-    g.set_node(routx::Node{.id = 1, .osm_id = 1, .lat = 0.01, .lon = 0.01});
-    g.set_node(routx::Node{.id = 2, .osm_id = 2, .lat = 0.02, .lon = 0.01});
-    g.set_node(routx::Node{.id = 3, .osm_id = 3, .lat = 0.03, .lon = 0.01});
-    g.set_node(routx::Node{.id = 4, .osm_id = 4, .lat = 0.04, .lon = 0.01});
-    g.set_node(routx::Node{.id = 5, .osm_id = 5, .lat = 0.03, .lon = 0.00});
-    g.set_edge(1, routx::Edge{.to = 2, .cost = 200.0});
-    g.set_edge(2, routx::Edge{.to = 1, .cost = 200.0});
-    g.set_edge(2, routx::Edge{.to = 3, .cost = 200.0});
-    g.set_edge(2, routx::Edge{.to = 5, .cost = 100.0});
-    g.set_edge(3, routx::Edge{.to = 2, .cost = 200.0});
-    g.set_edge(3, routx::Edge{.to = 4, .cost = 200.0});
-    g.set_edge(4, routx::Edge{.to = 3, .cost = 200.0});
-    g.set_edge(4, routx::Edge{.to = 5, .cost = 100.0});
-    g.set_edge(5, routx::Edge{.to = 2, .cost = 100.0});
-    g.set_edge(5, routx::Edge{.to = 4, .cost = 100.0});
-
+    auto g = get_simple_fixture();
     constexpr size_t step_limit = 100;
 
     {
@@ -303,27 +307,7 @@ TEST(Graph, FindRouteWithTurnRestriction) {
 }
 
 TEST(Graph, FindRouteNoRoute) {
-    //   200   200   200
-    // 1─────2─────3─────4
-    //       └─────5─────┘
-    //         100    100
-    routx::Graph g = {};
-    g.set_node(routx::Node{.id = 1, .osm_id = 1, .lat = 0.01, .lon = 0.01});
-    g.set_node(routx::Node{.id = 2, .osm_id = 2, .lat = 0.02, .lon = 0.01});
-    g.set_node(routx::Node{.id = 3, .osm_id = 3, .lat = 0.03, .lon = 0.01});
-    g.set_node(routx::Node{.id = 4, .osm_id = 4, .lat = 0.04, .lon = 0.01});
-    g.set_node(routx::Node{.id = 5, .osm_id = 5, .lat = 0.03, .lon = 0.00});
-    g.set_edge(1, routx::Edge{.to = 2, .cost = 200.0});
-    g.set_edge(2, routx::Edge{.to = 1, .cost = 200.0});
-    g.set_edge(2, routx::Edge{.to = 3, .cost = 200.0});
-    g.set_edge(2, routx::Edge{.to = 5, .cost = 100.0});
-    g.set_edge(3, routx::Edge{.to = 2, .cost = 200.0});
-    g.set_edge(3, routx::Edge{.to = 4, .cost = 200.0});
-    g.set_edge(4, routx::Edge{.to = 3, .cost = 200.0});
-    g.set_edge(4, routx::Edge{.to = 5, .cost = 100.0});
-    g.set_edge(5, routx::Edge{.to = 2, .cost = 100.0});
-    g.set_edge(5, routx::Edge{.to = 4, .cost = 100.0});
-
+    auto g = get_simple_fixture();
     constexpr size_t step_limit = 2;
     ASSERT_THROW(g.find_route(1, 4, step_limit), routx::StepLimitExceeded);
 }
@@ -350,6 +334,35 @@ class TemporaryFile {
     std::string m_path;
 };
 
+TEST(Graph, SerializeBinaryRoundTripFile) {
+    TemporaryFile temp_file{};
+
+    get_simple_fixture().write_to_file(RoutxGraphFormatBinary, temp_file.path().data());
+
+    routx::Graph g{};
+    g.read_from_file(RoutxGraphFormatBinary, temp_file.path().data());
+
+    ASSERT_EQ(g.size(), 5);
+    ASSERT_EQ(g.get_edges(2).size(), 3);
+}
+
+TEST(Graph, SerializeBinaryRoundTripFileError) {
+    routx::Graph g{};
+    ASSERT_THROW(g.read_from_file(RoutxGraphFormatBinary, "non_existing_file.osm"),
+                 routx::SerializationFailed);
+}
+
+TEST(Graph, SerializeBinaryRoundTripMemory) {
+    auto data = get_simple_fixture().write_to_memory(RoutxGraphFormatBinary);
+    ASSERT_TRUE(data.data());
+
+    routx::Graph g{};
+    g.read_from_memory(RoutxGraphFormatBinary, data.data(), data.size());
+
+    ASSERT_EQ(g.size(), 5);
+    ASSERT_EQ(g.get_edges(2).size(), 3);
+}
+
 TEST(Graph, AddFromOsmFile) {
     // Create a temporary file fixture and write its content
     TemporaryFile temp_file = {};
@@ -375,7 +388,7 @@ TEST(Graph, AddFromOsmFileError) {
         .bbox = {0},
     };
 
-    EXPECT_THROW(g.add_from_osm_file(&o, "non_existing_file.osm"), routx::osm::LoadingFailed);
+    ASSERT_THROW(g.add_from_osm_file(&o, "non_existing_file.osm"), routx::osm::LoadingFailed);
 }
 
 TEST(Graph, AddFromOsmMemory) {
@@ -422,7 +435,7 @@ TEST(Utility, SimplifyLine) {
                  0.2, 2.0, 0.25, 2.1, 0.6, 3.0, -0.1, 4.0};
     auto simplified = routx::simplify_line(line, 0.1);
 
-    EXPECT_EQ(simplified.size(), 10);
+    ASSERT_EQ(simplified.size(), 10);
     EXPECT_NEAR(simplified[0], 0.0, 1e-6);
     EXPECT_NEAR(simplified[1], 0.0, 1e-6);
     EXPECT_NEAR(simplified[2], 1.0, 1e-6);
