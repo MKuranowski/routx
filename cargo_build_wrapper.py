@@ -64,7 +64,8 @@ with cwd(project_root):
 
 # Determine the output directory and files
 if target:
-    target_dir = project_root / "target" / target / ("release" if release else "debug")
+    target_basename = target.partition(".")[0]
+    target_dir = project_root / "target" / target_basename / ("release" if release else "debug")
     is_windows = "-windows-" in target
     is_macos = "-apple-" in target
 else:

@@ -45,6 +45,7 @@ routx = custom_target(
     '--out-static', '@OUTPUT1@',
     '@CURRENT_SOURCE_DIR@',
   ],
+  env: meson.get_external_property('cargo_env', []),
   console: true,
   build_always_stale: true,
   build_by_default: true,

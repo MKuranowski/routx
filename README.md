@@ -216,8 +216,10 @@ The Meson wrapper project also supports cross-compilation, through the use of 2 
     `cargo xwin build` or `cross build`. It's processed using Python's [shlex.split](https://docs.python.org/3/library/shlex.html#shlex.split),
     and the first argument is assumed to be an executable, searched using [shutil.which](https://docs.python.org/3/library/shutil.html#shutil.which).
 - `cargo_build_target` - if set, append a `--target ${cargo_build_target}` to the argument list when executing
-    `${cargo_build_command}`. Causes the wrapper to search for the built library in `target/${cargo_build_target}/`
-    instead of the usual `target/`.
+    `${cargo_build_command}`. Causes the wrapper to search for the built library in `target/${cargo_build_target%%.*}/`
+    (target up to the first dot) instead of the usual `target/`.
+- `cargo_env` - extra environment variables to set when calling Cargo (and the wrapper).
+
 
 ## Release Checklist
 
