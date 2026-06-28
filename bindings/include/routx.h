@@ -237,7 +237,8 @@ bool routx_graph_delete_edge(RoutxGraph* graph, int64_t from_id, int64_t to_id);
  *
  * @returns the new, shorter, length of the simplified route. Any other elements are undefined.
  */
-size_t routx_graph_simplify_route(RoutxGraph* graph, int64_t* route, size_t route_len, float epsilon);
+size_t routx_graph_simplify_route(RoutxGraph* graph, int64_t* route, size_t route_len,
+                                  float epsilon);
 
 /**
  * Numeric multiplier for OSM ways with specific keys and values.
@@ -749,7 +750,6 @@ float routx_earth_distance(float lat1, float lon1, float lat2, float lon2);
  * @returns the new, shorter, length of the simplified array. Any other elements are undefined.
  */
 size_t routx_simplify_line(float* line, size_t line_len, float epsilon);
-
 
 #ifdef __cplusplus
 }  // extern "C"

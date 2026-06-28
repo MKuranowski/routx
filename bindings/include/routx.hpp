@@ -93,7 +93,6 @@ std::span<float> simplify_line(std::span<float> line, float epsilon) {
     return std::span(line.data(), new_len);
 }
 
-
 /**
  * An element of the @ref Graph.
  *
@@ -680,9 +679,9 @@ class Graph {
     /**
      * Simplifies a route (sequence of nodes) using the Ramer-Douglas-Peucker algorithm, in-place.
      *
-     * Epsilon represents the maximum distance (in decimal degrees, as the implementation assumes flat,
-     * Euclidean geometry) for a point's distance to a line segment to be considered insignificant
-     * and therefore removed.
+     * Epsilon represents the maximum distance (in decimal degrees, as the implementation assumes
+     * flat, Euclidean geometry) for a point's distance to a line segment to be considered
+     * insignificant and therefore removed.
      *
      * @returns the new, shorter simplified route. Any other elements are undefined.
      */
