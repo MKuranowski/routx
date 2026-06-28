@@ -1,4 +1,4 @@
-// (c) Copyright 2025 Mikołaj Kuranowski
+// (c) Copyright 2025-2026 Mikołaj Kuranowski
 // SPDX-License-Identifier: MIT
 
 //! Simple routing over [OpenStreetMap](https://www.openstreetmap.org/) data.
@@ -37,6 +37,7 @@ mod distance;
 mod graph;
 mod kd;
 pub mod osm;
+pub mod rdp;
 
 pub use astar::{find_route, find_route_without_turn_around, AStarError, DEFAULT_STEP_LIMIT};
 pub use distance::earth_distance;

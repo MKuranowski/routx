@@ -1,4 +1,4 @@
-// (c) Copyright 2025 Mikołaj Kuranowski
+// (c) Copyright 2025-2026 Mikołaj Kuranowski
 // SPDX-License-Identifier: MIT
 
 use crate::{earth_distance, Edge, Node};
@@ -207,5 +207,20 @@ impl Graph {
         if let Some((_, dst_edges)) = self.0.get_mut(&dst) {
             *dst_edges = edges;
         }
+    }
+
+    /// Simplifies a route (sequence of nodes) using the [Ramer-Douglas-Peucker algorithm](https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm).
+    ///
+    /// The epsilon must be provided in decimal degrees, as the implementation assumes
+    /// flat, Euclidean geometry.
+    ///
+    /// Mutates the slice of nodes in-place, and returns a sub-slice of it representing the
+    /// simplified route. Any other elements are undefined.
+    pub fn simplify_route<'a>(&self, route: &'a mut [i64], epsilon: f32) -> &'a mut [i64] {
+        crate::rdp::simplify_generic(route, epsilon, |id| {
+            self.get_node(id)
+                .map(|n| (n.lat, n.lon))
+                .unwrap_or_default()
+        })
     }
 }

@@ -1,4 +1,4 @@
-// (c) Copyright 2025 Mikołaj Kuranowski
+// (c) Copyright 2025-2026 Mikołaj Kuranowski
 // SPDX-License-Identifier: MIT
 
 #ifndef ROUTX_H
@@ -227,6 +227,17 @@ bool routx_graph_set_edge(RoutxGraph* graph, int64_t from_id, RoutxEdge edge);
  * @returns true if an edge was removed, false otherwise
  */
 bool routx_graph_delete_edge(RoutxGraph* graph, int64_t from_id, int64_t to_id);
+
+/**
+ * Simplifies a route (sequence of nodes) using the Ramer-Douglas-Peucker algorithm, in-place.
+ *
+ * Epsilon represents the maximum distance (in decimal degrees, as the implementation assumes flat,
+ * Euclidean geometry) for a point's distance to a line segment to be considered insignificant
+ * and therefore removed.
+ *
+ * @returns the new, shorter, length of the simplified route. Any other elements are undefined.
+ */
+size_t routx_graph_simplify_route(RoutxGraph* graph, int64_t* route, size_t route_len, float epsilon);
 
 /**
  * Numeric multiplier for OSM ways with specific keys and values.
@@ -725,6 +736,20 @@ RoutxNode routx_kd_tree_find_nearest_node(RoutxKDTree const* kd_tree, float lat,
  * Returns the result in kilometers.
  */
 float routx_earth_distance(float lat1, float lon1, float lat2, float lon2);
+
+/**
+ * Simplifies a line (a sequence of points) using the Ramer-Douglas-Peucker algorithm, in-place.
+ *
+ * Points must be encoded as `[x0 y0 x1 y1 x2 y2 ...]`. Any odd trailing elements are ignored.
+ *
+ * Epsilon represents the maximum distance (in decimal degrees, as the implementation assumes flat,
+ * Euclidean geometry) for a point's distance to a line segment to be considered insignificant
+ * and therefore removed.
+ *
+ * @returns the new, shorter, length of the simplified array. Any other elements are undefined.
+ */
+size_t routx_simplify_line(float* line, size_t line_len, float epsilon);
+
 
 #ifdef __cplusplus
 }  // extern "C"

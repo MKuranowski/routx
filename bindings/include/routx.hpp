@@ -1,4 +1,4 @@
-// (c) Copyright 2025 Mikołaj Kuranowski
+// (c) Copyright 2025-2026 Mikołaj Kuranowski
 // SPDX-License-Identifier: MIT
 
 #ifndef ROUTX_HPP
@@ -76,6 +76,23 @@ void set_logging_callback(void (*callback)(void* arg, int level, char const* tar
 float earth_distance(float lat1, float lon1, float lat2, float lon2) {
     return routx_earth_distance(lat1, lon1, lat2, lon2);
 }
+
+/**
+ * Simplifies a line (a sequence of points) using the Ramer-Douglas-Peucker algorithm, in-place.
+ *
+ * Points must be encoded as `[x0 y0 x1 y1 x2 y2 ...]`. Any odd trailing elements are ignored.
+ *
+ * Epsilon represents the maximum distance (in decimal degrees, as the implementation assumes flat,
+ * Euclidean geometry) for a point's distance to a line segment to be considered insignificant
+ * and therefore removed.
+ *
+ * @returns the new, shorter, simplified array. Any other elements are undefined.
+ */
+std::span<float> simplify_line(std::span<float> line, float epsilon) {
+    auto new_len = routx_simplify_line(line.data(), line.size(), epsilon);
+    return std::span(line.data(), new_len);
+}
+
 
 /**
  * An element of the @ref Graph.
@@ -658,6 +675,20 @@ class Graph {
             default:
                 std::abort();  // invalid RoutxRouteResultType
         }
+    }
+
+    /**
+     * Simplifies a route (sequence of nodes) using the Ramer-Douglas-Peucker algorithm, in-place.
+     *
+     * Epsilon represents the maximum distance (in decimal degrees, as the implementation assumes flat,
+     * Euclidean geometry) for a point's distance to a line segment to be considered insignificant
+     * and therefore removed.
+     *
+     * @returns the new, shorter simplified route. Any other elements are undefined.
+     */
+    std::span<int64_t> simplify_route(std::span<int64_t> route, float epsilon) const {
+        auto new_len = routx_graph_simplify_route(m_impl, route.data(), route.size(), epsilon);
+        return std::span(route.data(), new_len);
     }
 
     /**

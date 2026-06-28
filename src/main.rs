@@ -24,6 +24,10 @@ struct Cli {
 
     /// Longitude of the end point
     end_lon: f32,
+
+    /// Simplify the generated route using the RDP algorithm.
+    #[arg(short, long)]
+    simplify: bool,
 }
 
 pub fn main() -> Result<(), Box<dyn Error>> {
@@ -40,8 +44,14 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         .find_nearest_node(cli.end_lat, cli.end_lon)
         .expect("no node corresponding to the given end position");
 
-    let route =
+    let mut route =
         routx::find_route_without_turn_around(&g, start.id, end.id, routx::DEFAULT_STEP_LIMIT)?;
+
+    let route: &[i64] = if cli.simplify {
+        g.simplify_route(&mut route, 1e-6)
+    } else {
+        &route
+    };
 
     println!("{{");
     println!("  \"type\": \"FeatureCollection\",");

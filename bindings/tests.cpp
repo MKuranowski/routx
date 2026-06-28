@@ -1,4 +1,4 @@
-// (c) Copyright 2025 Mikołaj Kuranowski
+// (c) Copyright 2025-2026 Mikołaj Kuranowski
 // SPDX-License-Identifier: MIT
 
 #include <gtest/gtest.h>
@@ -415,6 +415,24 @@ TEST(Graph, AddFromOsmCustomProfile) {
     g.add_from_osm_memory(&o, osm_file_fixture.data(), osm_file_fixture.size());
 
     EXPECT_EQ(g.size(), 4);
+}
+
+TEST(Utility, SimplifyLine) {
+    float line[]{0.0, 0.0, 0.55, 0.5, 1.0, 1.0, 0.7,  1.3,
+                 0.2, 2.0, 0.25, 2.1, 0.6, 3.0, -0.1, 4.0};
+    auto simplified = routx::simplify_line(line, 0.1);
+
+    EXPECT_EQ(simplified.size(), 10);
+    EXPECT_NEAR(simplified[0], 0.0, 1e-6);
+    EXPECT_NEAR(simplified[1], 0.0, 1e-6);
+    EXPECT_NEAR(simplified[2], 1.0, 1e-6);
+    EXPECT_NEAR(simplified[3], 1.0, 1e-6);
+    EXPECT_NEAR(simplified[4], 0.2, 1e-6);
+    EXPECT_NEAR(simplified[5], 2.0, 1e-6);
+    EXPECT_NEAR(simplified[6], 0.6, 1e-6);
+    EXPECT_NEAR(simplified[7], 3.0, 1e-6);
+    EXPECT_NEAR(simplified[8], -0.1, 1e-6);
+    EXPECT_NEAR(simplified[9], 4.0, 1e-6);
 }
 
 TEST(Utility, EarthDistance) {

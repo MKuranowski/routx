@@ -1,4 +1,4 @@
-// (c) Copyright 2025 Mikołaj Kuranowski
+// (c) Copyright 2025-2026 Mikołaj Kuranowski
 // SPDX-License-Identifier: MIT
 
 //! C bindings for this library.
@@ -255,6 +255,29 @@ pub unsafe extern "C" fn routx_graph_delete_edge(
         graph.delete_edge(from_id, to_id)
     } else {
         false
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn routx_graph_simplify_route(
+    graph: *mut Graph,
+    route_ptr: *mut i64,
+    route_len: usize,
+    epsilon: f32,
+) -> usize {
+    match (graph.as_mut(), route_ptr.as_mut()) {
+        (Some(graph), Some(route_data)) => {
+            let route = std::slice::from_raw_parts_mut(route_data, route_len);
+            let new_route = graph.simplify_route(route, epsilon);
+
+            assert_eq!(
+                route_ptr,
+                new_route.as_mut_ptr(),
+                "simplify_route must return a slice starting at the same address"
+            );
+            new_route.len()
+        }
+        _ => route_len,
     }
 }
 
@@ -674,4 +697,25 @@ pub unsafe extern "C" fn routx_kd_tree_find_nearest_node(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn routx_earth_distance(lat1: f32, lon1: f32, lat2: f32, lon2: f32) -> f32 {
     earth_distance(lat1, lon1, lat2, lon2)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn routx_simplify_line(
+    line_ptr: *mut f32,
+    line_len: usize,
+    epsilon: f32,
+) -> usize {
+    if let Some(line_data) = line_ptr.as_mut() {
+        let line = std::slice::from_raw_parts_mut(line_data, line_len);
+        let new_line = rdp::simplify_flat(line, epsilon);
+
+        assert_eq!(
+            line_ptr,
+            new_line.as_mut_ptr(),
+            "rdp::simplify_flat must return a slice starting at the same address"
+        );
+        new_line.len()
+    } else {
+        line_len
+    }
 }
