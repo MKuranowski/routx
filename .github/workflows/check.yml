@@ -42,6 +42,9 @@ jobs:
         run: meson compile -C builddir
 
       - name: Test
+        run: cargo test
+
+      - name: Test Bindings
         run: meson test -C builddir
 
       - name: Check Rust formatting
