@@ -16,6 +16,7 @@ use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::mem::{forget, ManuallyDrop};
 use std::ptr::null_mut;
 use std::slice;
+use std::sync::{Mutex, Once};
 
 type CGraphIterator<'a> = btree_map::Values<'a, i64, (Node, Vec<Edge>)>;
 
@@ -27,14 +28,48 @@ type CLogCallback = unsafe extern "C" fn(
 );
 type CFlushCallback = unsafe extern "C" fn(arg: *mut c_void);
 
-struct CLogger {
-    callback: CLogCallback,
+struct CLoggerData {
+    callback: Option<CLogCallback>,
     flush_callback: Option<CFlushCallback>,
     arg: usize, // rust is stupid and `*mut c_void` is not `Send + Sync`
     level: log::LevelFilter,
 }
 
+impl CLoggerData {
+    const fn new() -> Self {
+        Self {
+            callback: None,
+            flush_callback: None,
+            arg: 0,
+            level: log::LevelFilter::Off,
+        }
+    }
+}
+
+struct CLogger(pub Mutex<CLoggerData>);
+
 impl CLogger {
+    const fn new() -> Self {
+        Self(Mutex::new(CLoggerData::new()))
+    }
+
+    fn set_handler(
+        &self,
+        callback: Option<CLogCallback>,
+        flush_callback: Option<CFlushCallback>,
+        arg: *mut c_void,
+        level: log::LevelFilter,
+    ) {
+        let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        *guard = CLoggerData {
+            callback,
+            flush_callback,
+            arg: arg as usize,
+            level,
+        };
+        self.0.clear_poison();
+    }
+
     fn level_as_int(l: log::Level) -> c_int {
         match l {
             log::Level::Error => 40,
@@ -64,34 +99,40 @@ impl CLogger {
 
 impl log::Log for CLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
-        metadata.level() <= self.level
+        let data = self.0.lock().expect("logging mutex should not be poisoned");
+        metadata.level() <= data.level
     }
 
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
-            unsafe {
-                let c_message =
-                    CString::from_vec_unchecked(format!("{}", record.args()).into_bytes());
-                let c_target = CString::from_vec_unchecked(record.target().as_bytes().to_vec());
+            let data = self.0.lock().expect("logging mutex should not be poisoned");
+            if let Some(callback) = data.callback {
+                unsafe {
+                    let c_message =
+                        CString::from_vec_unchecked(format!("{}", record.args()).into_bytes());
+                    let c_target = CString::from_vec_unchecked(record.target().as_bytes().to_vec());
 
-                (self.callback)(
-                    self.arg as *mut c_void,
-                    Self::level_as_int(record.level()),
-                    c_target.as_ptr(),
-                    c_message.as_ptr(),
-                )
+                    callback(
+                        data.arg as *mut c_void,
+                        Self::level_as_int(record.level()),
+                        c_target.as_ptr(),
+                        c_message.as_ptr(),
+                    )
+                }
             }
         }
     }
 
     fn flush(&self) {
-        unsafe {
-            if let Some(flush_callback) = self.flush_callback {
-                (flush_callback)(self.arg as *mut c_void);
-            }
+        let data = self.0.lock().expect("logging mutex should not be poisoned");
+        if let Some(flush_callback) = data.flush_callback {
+            unsafe { flush_callback(data.arg as *mut c_void) };
         }
     }
 }
+
+static GLOBAL_LOGGER: CLogger = CLogger::new();
+static GLOBAL_LOGGER_INSTALL: Once = Once::new();
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn routx_set_logging_callback(
@@ -100,20 +141,17 @@ pub unsafe extern "C" fn routx_set_logging_callback(
     arg: *mut c_void,
     level: c_int,
 ) {
-    if let Some(callback) = callback {
-        let filter = CLogger::int_as_level_filter(level);
-        let logger = CLogger {
-            callback,
-            flush_callback,
-            arg: arg as usize,
-            level: filter,
-        };
-
-        log::set_max_level(filter);
-        let _ = log::set_boxed_logger(Box::new(logger));
+    let filter = if callback.is_some() {
+        CLogger::int_as_level_filter(level)
     } else {
-        log::set_max_level(log::LevelFilter::Off);
-    }
+        log::LevelFilter::Off
+    };
+
+    log::set_max_level(filter);
+    GLOBAL_LOGGER.set_handler(callback, flush_callback, arg, filter);
+    GLOBAL_LOGGER_INSTALL.call_once(|| {
+        log::set_logger(&GLOBAL_LOGGER).expect("log initialization should not fail");
+    });
 }
 
 #[unsafe(no_mangle)]

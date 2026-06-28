@@ -48,9 +48,6 @@ constexpr size_t DEFAULT_STEP_LIMIT = ROUTX_DEFAULT_STEP_LIMIT;
  *
  * - 5 for trace.
  *
- * This function leaks a small amount of memory allocated for the logging adapter.
- * It is advisable to only call this function once.
- *
  * @param callback function to call on a logging message, or NULL to disable logging.
  *     `arg` parameter is passed through as-is, `level` represents message severity (described
  * above), `target` describes briefly who made the logging call (e.g. `routx`), and `message` is
