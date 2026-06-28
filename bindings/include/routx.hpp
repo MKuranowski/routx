@@ -341,7 +341,7 @@ class LoadingFailed : public std::runtime_error {
 class SerializedGraph : public std::span<char> {
    public:
     SerializedGraph(char* data, uint32_t len, uint32_t cap)
-        : std::span<char>(data, len), m_capacity(cap) {};
+        : std::span<char>(data, len), m_capacity(cap) {}
 
     SerializedGraph(SerializedGraph const&) = delete;
     SerializedGraph& operator=(SerializedGraph const&) = delete;
